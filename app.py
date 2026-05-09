@@ -135,7 +135,7 @@ def load_system_prompt(agent_name: str) -> str:
 breaker = CircuitBreaker()
 
 #Layer3: Response Generation with LLM
-def generate_response(user_input: str, max_attempts: int = 3) -> InvocationResult:
+def production_invoke(user_input: str, max_retires: int = 3) -> InvocationResult:
     if not breaker.allow_request():
           return InvocationResult(
 			success=False,
@@ -156,7 +156,7 @@ def generate_response(user_input: str, max_attempts: int = 3) -> InvocationResul
             error_message="Harmful content detected.",
             error_code=ErrorCode.UNKNOWN 
         )
-    for attempt in range(max_attempts):        
+    for attempt in range(max_retires):        
         try:
             raw_response = llm.invoke(messages)
             content = raw_response.content 
@@ -205,7 +205,7 @@ def generate_response(user_input: str, max_attempts: int = 3) -> InvocationResul
 def budget_aware_invoke(tracker: SessionCostTracker, user_input: str) -> str:
     if not tracker.check_budget():
         return "I've reached my session limit. Please start a new session."
-    result = generate_response(user_input)
+    result = production_invoke(user_input)
     tracker.log_call(input_tokens=100, output_tokens=50, latency_ms=100.0, success=result.success)
 
     if result.success:
